@@ -20,7 +20,7 @@ def parse_cmd_line():
     parser = argparse.ArgumentParser(
         description='runs QuickMosaic on all Flight Folders specified in the --dir argument')
 
-    # Step 3: Define command-line options
+    parser.add_argument('-d', '--dir', required=True, help='Specify the directory containing the flight folders')
     parser.add_argument('-c', '--camera-type', default='LWIR', choices=camera_types,
                         help='Specify the camera type (choose from {})'.format(', '.join(camera_types)))
     parser.add_argument('-o', '--output-type', default='8-bit_Linear', choices=output_types,
@@ -33,7 +33,7 @@ def parse_cmd_line():
                         help='Specify the resolution (choose from {})'.format(', '.join(resolutions)))
 
     # Add the help option
-    parser.add_argument('-h', '--help', action='help', help='Show this help message and exit')
+   # parser.add_argument('-h', '--help', action='help', help='Show this help message and exit')
 
     return parser.parse_args()
 
@@ -61,18 +61,20 @@ def clean_reg_data(dir):
     remove_reg_files = ' rm -rf ' + dir + '/*_Registration*.csv'
     subprocess.check_call([remove_reg_files], shell=True, stderr=subprocess.STDOUT)
 
-def LogError(dir, error):
-    with open(dir + '/qm_runner_errors.txt', "a") as file_object:
+def LogError(error):
+    file_path = os.path.expanduser('~/qm_runner_errors.txt')
+    with open(file_path, "a") as file_object:
         file_object.write(error)
         file_object.write('\n')
 
-def RunCmd(dir, cmd):
+def RunCmd(cmd):
     try:
         print(cmd)
         subprocess.check_call(
             [cmd], shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
-        self.LogError("error executing: " +cmd + " return code = " + str(err.returncode))
+        print("error executing: " + cmd + " return code = " + str(err.returncode))
+        LogError("error executing: " + cmd + " return code = " + str(err.returncode))
 
 def RunQuickMosaic(self, flight_dir, camera_type, output_type):
     complete_flight_dir = flight_dir
@@ -96,21 +98,26 @@ def getAllFlightFolders(parent_folder):
                 flight_folders.append(folder)
     return flight_folders
 
-def getoptions():
-    import argparse
-    parser = argparse.ArgumentParser(description='Run QuickMosaic on all flights in a given folder')
-    parser.add_argument('--parent_folder', type=str, help='Parent folder containing all flight folders')
-    args = parser.parse_args()
-    return args
+def getOptions():
+    args = parse_cmd_line()
+    cmd_string = ' CameraType ' + args.camera_type + ' Output_Type ' + args.output_type + ' File_Format ' + args.file_format + ' Geocorrection_Level ' + args.geocorrection_level + ' Resolution ' + args.resolution
+    return cmd_string
 
 def runQuickMosaicOnAllFlights(parent_folder):
+    #version = get_version()
+    #print('QuickMosaic version: ' + version)
     for flight_folder in getAllFlightFolders(parent_folder):
         flight_dir = os.path.join(parent_folder, flight_folder)
-        clean_metadata(flight_dir)
-        clean_reg_data(flight_dir)
+        #clean_metadata(flight_dir)
+        #clean_reg_data(flight_dir)
+        print(flight_dir)
+        qm_cmd = '/var/SmartStorage/bin/QuickMosaic ' + flight_dir + getOptions()
+        RunCmd(qm_cmd)
+
 
 def main():
-    runQuickMosaicOnAllFlights('/ssd')
+    args = parse_cmd_line()
+    runQuickMosaicOnAllFlights(args.dir)
 
 if __name__ == '__main__':
     main()
